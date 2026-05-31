@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Zinc Miner",
+    "slug": "zinc-seeker-miner",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "zincminer",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0d10"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "cash.zinc.seekerminer",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b0d10"
+      }
+    },
+    "plugins": [
+      "expo-dev-client",
+      ["expo-build-properties", { "android": { "kotlinVersion": "1.9.25" } }]
+    ],
+    "experiments": {
+      "tsconfigPaths": true
+    }
+  }
+}
