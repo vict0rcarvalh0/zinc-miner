@@ -42,10 +42,12 @@ src/
   components/, screens/  zinc.cash-style dark UI
 ```
 
-All on-chain logic uses the **`@sphalerite-foundry/zinc-ts-sdk`** package from
-npm (its handwritten `buildInitAutoMinerSessionInstruction` / `Update` / `TopUp`
-/ `Cancel` builders and PDA/account fetchers). The app only assembles, signs,
-and submits.
+All on-chain logic uses the **`@sphalerite-foundry/zinc-ts-sdk`** package in
+`../zinc-ts-sdk` (v1.52.0 — the version whose board/round layout matches the
+live mainnet game; npm's published 1.106.0 points at a frozen legacy board).
+It provides the handwritten `buildInitAutoMinerSessionInstruction` / `Update` /
+`TopUp` / `Cancel` builders and PDA/account fetchers; the app only assembles,
+signs, and submits.
 
 ## How the tile pattern is encrypted (the tricky part)
 
@@ -87,8 +89,11 @@ Prerequisites: Node 18+, Android SDK + a Seeker (or Android device/emulator with
 an MWA-compatible wallet such as the Seed Vault wallet or Phantom).
 
 ```bash
-cd app
-npm install          # pulls @sphalerite-foundry/zinc-ts-sdk from npm
+# 1) Build the local SDK once (the 1.52.0 in ../zinc-ts-sdk matches the live board)
+cd zinc-ts-sdk && npm install && npm run build && cd ../app
+
+# 2) Install + run the dev build on a connected device
+npm install
 npm run android      # = expo run:android (generates native android/ + installs)
 ```
 

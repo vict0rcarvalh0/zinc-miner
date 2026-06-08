@@ -39,6 +39,8 @@ export type ZincSnapshot = {
   config: Config;
   activeRound: Round | null;
   activeRoundId: bigint | null;
+  /** Set when the round account exists but the SDK could not decode it. */
+  roundDecodeError: string | null;
 };
 
 /** One round-trip read of the live protocol state for the dashboard. */
@@ -52,6 +54,7 @@ export async function fetchZincSnapshot(
 
   const activeRoundId = opt<bigint>(board.data.activeRoundId);
   let activeRound: Round | null = null;
+  let roundDecodeError: string | null = null;
   if (activeRoundId != null) {
     try {
       const round = await fetchRoundAccount(
@@ -59,8 +62,11 @@ export async function fetchZincSnapshot(
         getRoundAddress(activeRoundId)[0],
       );
       activeRound = round.data;
-    } catch {
-      activeRound = null;
+    } catch (e) {
+      // The published SDK's Round layout can lag the deployed program; in that
+      // case the account still exists, we just can't decode every field. Keep
+      // the round id so the UI can still show the live round.
+      roundDecodeError = e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -69,6 +75,7 @@ export async function fetchZincSnapshot(
     config: config.data,
     activeRound,
     activeRoundId,
+    roundDecodeError,
   };
 }
 

@@ -26,11 +26,17 @@ export const APP_IDENTITY = {
   icon: 'favicon.ico',
 } as const;
 
-// Grid geometry. Zinc, like ORE, plays on a square grid; the deploy mask packs
-// the selected-tile bitset. Adjust if the live board geometry differs.
-export const GRID_COLS = 5;
-export const GRID_ROWS = 5;
-export const TILE_COUNT = GRID_COLS * GRID_ROWS;
+// Board geometry. Zinc is a roulette numbered 1..30. Internally tiles are
+// 0-indexed (bit `n-1` for number `n`) to match the on-chain mask packing.
+export const FIRST_NUMBER = 1;
+export const LAST_NUMBER = 30;
+export const TILE_COUNT = LAST_NUMBER - FIRST_NUMBER + 1; // 30
+export const GRID_COLS = 5; // 5 x 6 layout on phone
+
+/** Displayed roulette number for an internal 0-based tile index. */
+export const tileToNumber = (tile: number): number => tile + FIRST_NUMBER;
+/** Internal 0-based tile index for a displayed roulette number. */
+export const numberToTile = (n: number): number => n - FIRST_NUMBER;
 
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 

@@ -24,41 +24,51 @@ export function HomeScreen({ state }: { state: ZincState }) {
     <View>
       <Card>
         <SectionTitle>Live Round</SectionTitle>
-        {round && roundId != null ? (
+        {roundId != null ? (
           <>
             <View style={styles.roundHead}>
               <Text style={styles.roundId}>#{roundId.toString()}</Text>
               <View style={styles.statusChip}>
                 <View style={styles.live} />
                 <Text style={styles.statusText}>
-                  {winningSquare != null ? 'Revealed' : 'Open'}
+                  {round
+                    ? winningSquare != null
+                      ? 'Revealed'
+                      : 'Open'
+                    : 'Live'}
                 </Text>
               </View>
             </View>
-            <View style={styles.pills}>
-              <StatPill
-                label="Pot (deployed)"
-                value={`${lamportsToSol(round.totalDeployed)} ◎`}
-                accent={colors.accent}
-              />
-              <StatPill
-                label="Miners"
-                value={round.numberOfPlayers.toString()}
-              />
-              <StatPill
-                label="Winning tile"
-                value={
-                  winningSquare != null
-                    ? `#${(winningSquare + 1n).toString()}`
-                    : 'pending'
-                }
-                accent={winningSquare != null ? colors.gold : undefined}
-              />
-              <StatPill
-                label="Winners"
-                value={round.winners.toString()}
-              />
-            </View>
+            {round ? (
+              <View style={styles.pills}>
+                <StatPill
+                  label="Pot (deployed)"
+                  value={`${lamportsToSol(round.totalDeployed)} ◎`}
+                  accent={colors.accent}
+                />
+                <StatPill
+                  label="Miners"
+                  value={round.numberOfPlayers.toString()}
+                />
+                <StatPill
+                  label="Winning number"
+                  value={
+                    winningSquare != null
+                      ? `${(winningSquare + 1n).toString()}`
+                      : 'pending'
+                  }
+                  accent={winningSquare != null ? colors.gold : undefined}
+                />
+                <StatPill label="Winners" value={round.winners.toString()} />
+              </View>
+            ) : (
+              <Text style={styles.note}>
+                Round is live, but this build of the Zinc SDK can't decode its
+                details (SDK/program version mismatch). Update the SDK to the
+                version matching the deployed program to see pot, miners, and
+                the winning number.
+              </Text>
+            )}
           </>
         ) : (
           <Text style={styles.empty}>
@@ -111,8 +121,7 @@ const styles = StyleSheet.create({
   roundId: {
     color: colors.text,
     fontSize: 30,
-    fontWeight: '900',
-    fontFamily: font.mono,
+    fontFamily: font.black,
   },
   statusChip: {
     flexDirection: 'row',
@@ -124,7 +133,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   live: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.win },
-  statusText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  statusText: { color: colors.textMuted, fontSize: 13, fontFamily: font.semibold },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   empty: { color: colors.textFaint, fontSize: 14, lineHeight: 20 },
+  note: { color: colors.warn, fontSize: 13, lineHeight: 19 },
 });

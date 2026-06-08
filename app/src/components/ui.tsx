@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,20 +8,49 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing, font } from '../theme';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { colors, radius, spacing, font, motion, glass, hairline } from '../theme';
+import { HudPanel } from './fx/HudPanel';
+import { Sheen } from './fx/Sheen';
 
 export function Card({
   children,
   style,
+  index = 0,
 }: {
   children: React.ReactNode;
   style?: ViewStyle;
+  /** Position in a stack — drives the entrance stagger. */
+  index?: number;
 }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(50 + index * 80)
+        .springify()
+        .damping(18)
+        .mass(0.9)}
+      style={[styles.cardWrap, style]}
+    >
+      <HudPanel>{children}</HudPanel>
+    </Animated.View>
+  );
 }
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <Text style={styles.sectionTitle}>{children}</Text>;
+  return (
+    <View style={styles.sectionRow}>
+      <Text style={styles.sectionPrefix}>//</Text>
+      <Text style={styles.sectionTitle}>{children}</Text>
+      <View style={styles.sectionRule} />
+    </View>
+  );
 }
 
 export function Label({ children }: { children: React.ReactNode }) {
@@ -38,12 +67,15 @@ export function StatPill({
   accent?: string;
 }) {
   return (
-    <View style={styles.pill}>
-      <Text style={styles.pillLabel}>{label}</Text>
-      <Text style={[styles.pillValue, accent ? { color: accent } : null]}>
-        {value}
-      </Text>
-    </View>
+    <Animated.View entering={FadeIn.duration(motion.med)} style={styles.pill}>
+      <View style={[styles.pillBar, accent ? { backgroundColor: accent } : null]} />
+      <View style={styles.pillBody}>
+        <Text style={styles.pillLabel}>{label}</Text>
+        <Text style={[styles.pillValue, accent ? { color: accent } : null]}>
+          {value}
+        </Text>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -60,28 +92,46 @@ export function PrimaryButton({
   busy?: boolean;
   tone?: 'accent' | 'danger' | 'neutral';
 }) {
-  const bg =
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const fill =
     tone === 'danger'
-      ? colors.loss
+      ? 'rgba(248,81,73,0.13)'
       : tone === 'neutral'
-        ? colors.surfaceAlt
-        : colors.accent;
-  const fg = tone === 'neutral' ? colors.text : '#04110f';
+        ? 'rgba(255,255,255,0.05)'
+        : 'rgba(249,115,21,0.14)';
+  const edge = tone === 'danger' ? colors.loss : tone === 'neutral' ? glass.borderDim : colors.accent;
+  const fg = tone === 'danger' ? colors.loss : tone === 'neutral' ? colors.text : colors.accent;
+  const isAccent = tone === 'accent';
+
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled || busy}
-      style={({ pressed }) => [
-        styles.button,
-        { backgroundColor: bg, opacity: disabled ? 0.4 : pressed ? 0.85 : 1 },
-      ]}
-    >
-      {busy ? (
-        <ActivityIndicator color={fg} />
-      ) : (
-        <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>
-      )}
-    </Pressable>
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPress={onPress}
+        disabled={disabled || busy}
+        onPressIn={() => {
+          scale.value = withSpring(0.96, motion.springSnappy);
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, motion.spring);
+        }}
+        style={[
+          styles.button,
+          { backgroundColor: fill, borderColor: edge, opacity: disabled ? 0.4 : 1 },
+        ]}
+      >
+        {/* HUD corner ticks */}
+        <View style={[styles.btnTick, styles.btnTL, { borderColor: fg }]} />
+        <View style={[styles.btnTick, styles.btnBR, { borderColor: fg }]} />
+        {busy ? (
+          <ActivityIndicator color={fg} />
+        ) : (
+          <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>
+        )}
+        {isAccent && !disabled ? <Sheen period={2800} /> : null}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -132,6 +182,14 @@ export function Toggle({
   label: string;
   hint?: string;
 }) {
+  const p = useSharedValue(value ? 1 : 0);
+  useEffect(() => {
+    p.value = withSpring(value ? 1 : 0, motion.springSnappy);
+  }, [value, p]);
+  const knobStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: p.value * 22 }],
+    backgroundColor: interpolateColor(p.value, [0, 1], [colors.textFaint, colors.accent]),
+  }));
   return (
     <Pressable style={styles.toggleRow} onPress={() => onChange(!value)}>
       <View style={{ flex: 1 }}>
@@ -139,7 +197,7 @@ export function Toggle({
         {hint ? <Text style={styles.toggleHint}>{hint}</Text> : null}
       </View>
       <View style={[styles.track, value ? styles.trackOn : styles.trackOff]}>
-        <View style={[styles.knob, value ? styles.knobOn : styles.knobOff]} />
+        <Animated.View style={[styles.knob, knobStyle]} />
       </View>
     </Pressable>
   );
@@ -169,70 +227,87 @@ export function FieldInput({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+  cardWrap: { marginBottom: spacing.lg },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  sectionPrefix: {
+    color: colors.accent,
+    fontSize: 12,
+    fontFamily: font.bold,
+    letterSpacing: 1,
   },
   sectionTitle: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.5,
+    fontFamily: font.bold,
+    letterSpacing: 2.4,
     textTransform: 'uppercase',
-    marginBottom: spacing.md,
+  },
+  sectionRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: hairline,
   },
   label: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: font.semibold,
     marginBottom: spacing.sm,
   },
   pill: {
-    backgroundColor: colors.bgElevated,
-    borderColor: colors.border,
+    flexDirection: 'row',
+    backgroundColor: glass.fillStrong,
+    borderColor: glass.borderDim,
     borderWidth: 1,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.hud,
     flexGrow: 1,
     flexBasis: '46%',
+    overflow: 'hidden',
   },
+  pillBar: { width: 2, backgroundColor: glass.border },
+  pillBody: { flex: 1, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   pillLabel: {
     color: colors.textFaint,
-    fontSize: 11,
-    letterSpacing: 0.8,
+    fontSize: 10,
+    fontFamily: font.medium,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   pillValue: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: '700',
-    fontFamily: font.mono,
+    fontFamily: font.bold,
   },
   button: {
     height: 52,
-    borderRadius: radius.md,
+    borderRadius: radius.hud,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    overflow: 'hidden',
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.4,
+    fontSize: 15,
+    fontFamily: font.black,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
+  btnTick: { position: 'absolute', width: 9, height: 9 },
+  btnTL: { top: 4, left: 4, borderTopWidth: 1.5, borderLeftWidth: 1.5 },
+  btnBR: { bottom: 4, right: 4, borderBottomWidth: 1.5, borderRightWidth: 1.5 },
   stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
-    borderColor: colors.border,
+    backgroundColor: glass.fillStrong,
+    borderColor: glass.borderDim,
     borderWidth: 1,
-    borderRadius: radius.md,
+    borderRadius: radius.hud,
     overflow: 'hidden',
   },
   stepperBtn: {
@@ -240,23 +315,22 @@ const styles = StyleSheet.create({
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  stepperSign: { color: colors.accent, fontSize: 26, fontWeight: '700' },
+  stepperSign: { color: colors.accent, fontSize: 26, fontFamily: font.bold },
   stepperValue: {
     flex: 1,
     textAlign: 'center',
     color: colors.text,
     fontSize: 18,
-    fontWeight: '700',
-    fontFamily: font.mono,
+    fontFamily: font.bold,
   },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.sm,
   },
-  toggleLabel: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  toggleLabel: { color: colors.text, fontSize: 15, fontFamily: font.semibold },
   toggleHint: { color: colors.textFaint, fontSize: 12, marginTop: 2 },
   track: {
     width: 52,
@@ -264,17 +338,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     padding: 3,
     justifyContent: 'center',
-  },
-  trackOn: { backgroundColor: colors.accentDim },
-  trackOff: { backgroundColor: colors.surfaceAlt },
-  knob: { width: 24, height: 24, borderRadius: 12 },
-  knobOn: { backgroundColor: colors.accent, alignSelf: 'flex-end' },
-  knobOff: { backgroundColor: colors.textFaint, alignSelf: 'flex-start' },
-  input: {
-    backgroundColor: colors.bgElevated,
-    borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: radius.md,
+    borderColor: glass.borderDim,
+  },
+  trackOn: { backgroundColor: 'rgba(249,115,21,0.25)' },
+  trackOff: { backgroundColor: 'rgba(255,255,255,0.05)' },
+  knob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.textFaint },
+  input: {
+    backgroundColor: glass.fillStrong,
+    borderColor: glass.borderDim,
+    borderWidth: 1,
+    borderRadius: radius.hud,
     color: colors.text,
     fontSize: 18,
     fontFamily: font.mono,

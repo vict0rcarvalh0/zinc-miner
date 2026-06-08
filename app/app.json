@@ -22,10 +22,20 @@
     },
     "plugins": [
       "expo-dev-client",
-      ["expo-build-properties", { "android": { "kotlinVersion": "1.9.25" } }]
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ]
     ],
     "experiments": {
       "tsconfigPaths": true
+    },
+    "ios": {
+      "bundleIdentifier": "cash.zinc.seekerminer"
     }
   }
 }

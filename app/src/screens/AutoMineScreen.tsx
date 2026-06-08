@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, font } from '../theme';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, font, radius, glass } from '../theme';
 import {
   Card,
   SectionTitle,
@@ -10,15 +10,21 @@ import {
   PrimaryButton,
   StatPill,
 } from '../components/ui';
-import { MineGrid } from '../components/MineGrid';
+import { RouletteBoard } from '../components/RouletteBoard';
 import { lamportsToSol, solToLamports } from '../lib/format';
 import {
   DEFAULT_CRANK_REIMBURSEMENT_LAMPORTS,
   LAMPORTS_PER_SOL,
+  TILE_COUNT,
+  tileToNumber,
 } from '../config/zinc';
 import { useAutoMiner } from '../hooks/useAutoMiner';
-import { opt } from '../solana/zincClient';
 import type { ZincState } from '../hooks/useZincState';
+
+// Outside-bet presets, expressed over displayed roulette numbers.
+const ALL_TILES = Array.from({ length: TILE_COUNT }, (_, i) => i);
+const EVEN_TILES = ALL_TILES.filter((t) => tileToNumber(t) % 2 === 0);
+const ODD_TILES = ALL_TILES.filter((t) => tileToNumber(t) % 2 === 1);
 
 export function AutoMineScreen({
   state,
@@ -49,6 +55,10 @@ export function AutoMineScreen({
       else next.add(tile);
       return next;
     });
+
+  const setExactly = (tiles: number[]) => setSelected(new Set(tiles));
+  const sameSet = (tiles: number[]) =>
+    selected.size === tiles.length && tiles.every((t) => selected.has(t));
 
   const amountPerRound = solToLamports(amountSol);
   const reimbursement = BigInt(DEFAULT_CRANK_REIMBURSEMENT_LAMPORTS);
@@ -96,14 +106,38 @@ export function AutoMineScreen({
   return (
     <View>
       <Card>
-        <SectionTitle>Tile Pattern</SectionTitle>
+        <SectionTitle>Numbers</SectionTitle>
         <Text style={styles.help}>
-          Pick the tiles the crank deploys onto every round. Your pattern is
+          Pick the numbers the crank bets every round. Your selection is
           encrypted on-chain — only the crank can read it.
         </Text>
-        <MineGrid selected={selected} onToggle={toggleTile} />
+
+        <View style={styles.presets}>
+          <PresetChip
+            label="Odd"
+            active={sameSet(ODD_TILES)}
+            onPress={() => setExactly(ODD_TILES)}
+          />
+          <PresetChip
+            label="Even"
+            active={sameSet(EVEN_TILES)}
+            onPress={() => setExactly(EVEN_TILES)}
+          />
+          <PresetChip
+            label="All"
+            active={sameSet(ALL_TILES)}
+            onPress={() => setExactly(ALL_TILES)}
+          />
+          <PresetChip
+            label="Clear"
+            active={false}
+            onPress={() => setExactly([])}
+          />
+        </View>
+
+        <RouletteBoard selected={selected} onToggle={toggleTile} />
         <Text style={styles.selectedCount}>
-          {selected.size} tile{selected.size === 1 ? '' : 's'} selected
+          {selected.size} number{selected.size === 1 ? '' : 's'} selected
         </Text>
       </Card>
 
@@ -173,8 +207,43 @@ export function AutoMineScreen({
   );
 }
 
+function PresetChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.chip, active && styles.chipActive]}
+    >
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   help: { color: colors.textFaint, fontSize: 13, lineHeight: 19, marginBottom: spacing.lg },
+  presets: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  chip: {
+    flex: 1,
+    height: 40,
+    borderRadius: radius.hud,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: glass.fillStrong,
+    borderWidth: 1,
+    borderColor: glass.borderDim,
+  },
+  chipActive: { backgroundColor: 'rgba(249,115,21,0.16)', borderColor: colors.accent, borderWidth: 1.5 },
+  chipText: { color: colors.textMuted, fontFamily: font.bold, fontSize: 13, letterSpacing: 1, textTransform: 'uppercase' },
+  chipTextActive: { color: colors.accent, fontFamily: font.black },
   selectedCount: {
     color: colors.accent,
     fontFamily: font.mono,

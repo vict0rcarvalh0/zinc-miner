@@ -5,19 +5,19 @@ each stage. Read top to bottom the first time.
 
 ---
 
-## 0. Heads-up before you start (one required fix)
+## 0. Polyfills (already wired in)
 
-The mask encryption uses `@arcium-hq/client`, which imports Node's `crypto`.
-Hermes (React Native's engine) has no `crypto`, so **the JS bundle will fail to
-build until a crypto polyfill is wired in** (a small pure-JS shim mapped in
-`metro.config.js`). This is tracked separately and is NOT yet applied.
+React Native's Hermes engine lacks the Node globals the Solana/Arcium stack
+expects. These are handled for you and need no action:
+- `Buffer` / `TextEncoder` / `crypto.getRandomValues` → `src/polyfills.ts`.
+- Node `fs` / `path` (dead SDK code) → stubbed in `metro.config.js`.
+- Node `crypto` (used by `@arcium-hq/client` for sha256/sha3-256 + aes-ctr) →
+  a verified pure-JS shim at `shims/node-crypto.js`, mapped in `metro.config.js`.
+  It's byte-for-byte compatible with Node crypto, so sealed tile patterns stay
+  decryptable by the crank.
 
-- If it's been applied → follow the runbook as-is.
-- If not → steps 1–4 work, but step 5 (`npm run android`) fails at the
-  bundling stage with `Unable to resolve module crypto`. Ping me to land the
-  shim first.
-
-Everything else below is final and verified.
+Note: if you ever change `metro.config.js`, restart Metro with a cleared cache:
+`npx expo start --dev-client -c`.
 
 ---
 
@@ -39,7 +39,21 @@ MWA is a native module, so you need the dev build produced below.
 
 ---
 
-## 2. One-time: configure `app/src/config/zinc.ts`
+## 2. One-time: build the SDK
+
+The app consumes the sibling `../zinc-ts-sdk` (version 1.52.0 — the one that
+matches the live mainnet board) via a `file:` dependency, which serves its
+built `dist/`. Build it once (rebuild only if its source changes):
+
+```bash
+cd zinc-ts-sdk && npm install && npm run build && cd ../app
+```
+
+✅ Expect: `Build success` and a populated `zinc-ts-sdk/dist/`.
+
+---
+
+## 3. One-time: configure `app/src/config/zinc.ts`
 
 Before mining for real, set:
 
@@ -56,7 +70,7 @@ There are no env vars and no `.env` file — this file is the only config surfac
 
 ---
 
-## 3. Install app dependencies
+## 4. Install app dependencies
 
 ```bash
 cd app
@@ -67,7 +81,7 @@ npm install          # pulls @sphalerite-foundry/zinc-ts-sdk from npm
 
 ---
 
-## 4. Build & launch the dev build on the device
+## 5. Build & launch the dev build on the device
 
 Connect/boot the device (`adb devices` shows it), then:
 
@@ -87,7 +101,7 @@ npm start            # dev server; press 'a' or shake device → Reload
 
 ---
 
-## 5. Test checklist (what to verify, in order)
+## 6. Test checklist (what to verify, in order)
 
 **A. App boots**
 - Opens on the **Mine** tab with the ZINC header. No red error screen.
@@ -118,24 +132,25 @@ npm start            # dev server; press 'a' or shake device → Reload
 
 ---
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 | Symptom | Likely cause / fix |
 |---------|--------------------|
-| `Unable to resolve module crypto` at bundle time | The crypto polyfill (section 0) isn't applied yet. |
-| `Unable to resolve @sphalerite-foundry/zinc-ts-sdk/...` | `npm install` didn't complete — rerun section 3. |
+| `Unable to resolve module crypto` at bundle time | Metro didn't pick up `metro.config.js` — restart with `npx expo start --dev-client -c`. |
+| `Unable to resolve @sphalerite-foundry/zinc-ts-sdk/...` | SDK not built — run section 2 (`zinc-ts-sdk` `npm install && npm run build`). |
 | Live Round card never fills | RPC throttling — set a paid `RPC_ENDPOINT`. |
 | Connect does nothing | No MWA wallet installed, or not on a real device/Seeker. |
+| Connect fails with "must be used in a secure context (https)" | Metro bundled the MWA packages' **web** build instead of the native one. Their `exports` map lists the `browser` condition before `react-native`, and package-exports resolution honors the package's key order (not `unstable_conditionNames` order), so `browser` wins. Fixed by the `resolveRequest` override in `metro.config.js` that pins both `@solana-mobile/mobile-wallet-adapter-protocol[-web3js]` to `lib/cjs/index.native.js`. If it recurs, confirm that override is present and restart with `npx expo start --dev-client -c`. |
 | Session start fails / program error | `ZINC_EXECUTOR` / `CRANK_KEY_VERSION` not set correctly, or budget > balance. |
 | `adb: no devices` | Device not connected/authorized, or emulator not booted. |
 
 ---
 
-## 7. Quick command reference
+## 8. Quick command reference
 
 ```bash
-# first time
-cd app && npm install
+# first time: build the SDK, then install the app
+cd zinc-ts-sdk && npm install && npm run build && cd ../app && npm install
 
 # build + run on device
 npm run android
