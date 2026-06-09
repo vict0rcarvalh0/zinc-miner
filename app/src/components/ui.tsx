@@ -19,6 +19,8 @@ import Animated, {
 import { colors, radius, spacing, font, motion, glass, hairline } from '../theme';
 import { HudPanel } from './fx/HudPanel';
 import { Sheen } from './fx/Sheen';
+import { SolanaIcon } from './icons/SolanaIcon';
+import { ZincIcon } from './icons/ZincIcon';
 
 export function Card({
   children,
@@ -61,19 +63,26 @@ export function StatPill({
   label,
   value,
   accent,
+  unit,
 }: {
   label: string;
   value: string;
   accent?: string;
+  /** Render a unit mark after the value: the real Solana or ZINC logo. */
+  unit?: 'sol' | 'zinc';
 }) {
   return (
     <Animated.View entering={FadeIn.duration(motion.med)} style={styles.pill}>
       <View style={[styles.pillBar, accent ? { backgroundColor: accent } : null]} />
       <View style={styles.pillBody}>
         <Text style={styles.pillLabel}>{label}</Text>
-        <Text style={[styles.pillValue, accent ? { color: accent } : null]}>
-          {value}
-        </Text>
+        <View style={styles.valueRow}>
+          <Text style={[styles.pillValue, accent ? { color: accent } : null]}>
+            {value}
+          </Text>
+          {unit === 'sol' ? <SolanaIcon size={13} /> : null}
+          {unit === 'zinc' ? <ZincIcon size={14} color={accent ?? colors.text} /> : null}
+        </View>
       </View>
     </Animated.View>
   );
@@ -141,6 +150,7 @@ export function NumberStepper({
   step,
   min = 0,
   suffix,
+  unit,
   precision = 3,
 }: {
   value: number;
@@ -148,10 +158,13 @@ export function NumberStepper({
   step: number;
   min?: number;
   suffix?: string;
+  /** Render a unit mark after the value: the real Solana or ZINC logo. */
+  unit?: 'sol' | 'zinc';
   precision?: number;
 }) {
   const clamp = (n: number) => Math.max(min, n);
-  const display = `${Number(value.toFixed(precision))}${suffix ? ` ${suffix}` : ''}`;
+  const num = `${Number(value.toFixed(precision))}`;
+  const display = unit ? num : `${num}${suffix ? ` ${suffix}` : ''}`;
   return (
     <View style={styles.stepperRow}>
       <Pressable
@@ -160,7 +173,11 @@ export function NumberStepper({
       >
         <Text style={styles.stepperSign}>−</Text>
       </Pressable>
-      <Text style={styles.stepperValue}>{display}</Text>
+      <View style={styles.stepperValueWrap}>
+        <Text style={styles.stepperValue}>{display}</Text>
+        {unit === 'sol' ? <SolanaIcon size={15} /> : null}
+        {unit === 'zinc' ? <ZincIcon size={16} color={colors.text} /> : null}
+      </View>
       <Pressable
         style={styles.stepperBtn}
         onPress={() => onChange(clamp(value + step))}
@@ -270,6 +287,7 @@ const styles = StyleSheet.create({
   },
   pillBar: { width: 2, backgroundColor: glass.border },
   pillBody: { flex: 1, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  valueRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   pillLabel: {
     color: colors.textFaint,
     fontSize: 10,
@@ -318,8 +336,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
   stepperSign: { color: colors.accent, fontSize: 26, fontFamily: font.bold },
-  stepperValue: {
+  stepperValueWrap: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  stepperValue: {
     textAlign: 'center',
     color: colors.text,
     fontSize: 18,

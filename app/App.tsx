@@ -40,12 +40,14 @@ import { Header } from './src/components/Header';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { AutoMineScreen } from './src/screens/AutoMineScreen';
 import { SessionScreen } from './src/screens/SessionScreen';
+import { StatsScreen } from './src/screens/StatsScreen';
 
-type Tab = 'mine' | 'auto' | 'session';
+type Tab = 'mine' | 'stats' | 'auto' | 'session';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'mine', label: 'Mine' },
-  { key: 'auto', label: 'Auto-Miner' },
+  { key: 'stats', label: 'Trends' },
+  { key: 'auto', label: 'Auto' },
   { key: 'session', label: 'Session' },
 ];
 
@@ -106,6 +108,7 @@ function Shell() {
             {/* Re-keyed per tab so each switch plays a quick slide-in. */}
             <Animated.View key={tab} entering={FadeInRight.duration(motion.med)}>
               {tab === 'mine' && <HomeScreen state={state} />}
+              {tab === 'stats' && <StatsScreen state={state} />}
               {tab === 'auto' && (
                 <AutoMineScreen state={state} connected={account != null} />
               )}

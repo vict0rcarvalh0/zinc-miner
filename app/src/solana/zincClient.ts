@@ -4,11 +4,13 @@ import {
   fetchBoardAccount,
   fetchConfigAccount,
   fetchRoundAccount,
+  fetchTreasuryAccount,
   fetchPlayerProfileAccount,
   fetchMaybeAutoMinerSessionAccount,
   getAutoMinerSessionAddress,
   getPlayerProfileAddress,
   getRoundAddress,
+  getTreasuryAddress,
   buildInitAutoMinerSessionInstruction,
   buildUpdateAutoMinerSessionInstruction,
   buildTopUpAutoMinerSessionInstruction,
@@ -41,26 +43,28 @@ export type ZincSnapshot = {
   activeRoundId: bigint | null;
   /** Set when the round account exists but the SDK could not decode it. */
   roundDecodeError: string | null;
+  /** Undistributed ZINC Bonanza jackpot held in the treasury's Bonanza vault. */
+  bonanzaPot: bigint | null;
 };
 
 /** One round-trip read of the live protocol state for the dashboard. */
 export async function fetchZincSnapshot(
   connection: Connection,
 ): Promise<ZincSnapshot> {
-  const [board, config] = await Promise.all([
+  const [board, config, treasury] = await Promise.all([
     fetchBoardAccount(connection),
     fetchConfigAccount(connection),
+    fetchTreasuryAccount(connection, getTreasuryAddress()[0]).catch(() => null),
   ]);
 
   const activeRoundId = opt<bigint>(board.data.activeRoundId);
+  const bonanzaPot = treasury ? treasury.data.bonanzaPot : null;
+
   let activeRound: Round | null = null;
   let roundDecodeError: string | null = null;
   if (activeRoundId != null) {
     try {
-      const round = await fetchRoundAccount(
-        connection,
-        getRoundAddress(activeRoundId)[0],
-      );
+      const round = await fetchRoundAccount(connection, getRoundAddress(activeRoundId)[0]);
       activeRound = round.data;
     } catch (e) {
       // The published SDK's Round layout can lag the deployed program; in that
@@ -76,6 +80,7 @@ export async function fetchZincSnapshot(
     activeRound,
     activeRoundId,
     roundDecodeError,
+    bonanzaPot,
   };
 }
 

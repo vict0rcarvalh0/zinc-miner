@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, font, glass } from '../theme';
 import { Sheen } from './fx/Sheen';
+import { ZincIcon } from './icons/ZincIcon';
 import { shortAddress } from '../lib/format';
 
 export function Header({
@@ -19,7 +20,7 @@ export function Header({
     <View style={styles.row}>
       <View style={styles.brand}>
         <View style={styles.mark}>
-          <Text style={styles.markText}>Zn</Text>
+          <ZincIcon size={30} color={colors.text} />
         </View>
         <Text style={styles.word}>ZINC</Text>
         <Text style={styles.tag}>MINER</Text>
@@ -59,8 +60,6 @@ const styles = StyleSheet.create({
   mark: {
     width: 34,
     height: 34,
-    borderRadius: radius.hud,
-    backgroundColor: colors.zinc,
     alignItems: 'center',
     justifyContent: 'center',
   },

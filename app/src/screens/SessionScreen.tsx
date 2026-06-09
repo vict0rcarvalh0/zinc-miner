@@ -68,12 +68,14 @@ export function SessionScreen({ state }: { state: ZincState }) {
           />
           <StatPill
             label="Budget left"
-            value={`${lamportsToSol(session.remainingBudget)} ◎`}
+            value={lamportsToSol(session.remainingBudget)}
+            unit="sol"
             accent={colors.accent}
           />
           <StatPill
             label="Per round"
-            value={`${lamportsToSol(session.amountPerRound)} ◎`}
+            value={lamportsToSol(session.amountPerRound)}
+            unit="sol"
           />
           <StatPill label="Rounds mined" value={session.roundsUsed.toString()} />
           <StatPill
@@ -100,12 +102,12 @@ export function SessionScreen({ state }: { state: ZincState }) {
           onChange={setTopUpSol}
           step={0.05}
           min={0}
-          suffix="◎"
+          unit="sol"
           precision={3}
         />
         <View style={{ height: spacing.md }} />
         <PrimaryButton
-          title={`Add ${Number(topUpSol.toFixed(3))} ◎`}
+          title={`Add ${Number(topUpSol.toFixed(3))} SOL`}
           onPress={onTopUp}
           busy={busy}
           disabled={topUpSol <= 0}
