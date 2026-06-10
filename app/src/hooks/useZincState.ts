@@ -15,6 +15,7 @@ import {
 const POLL_INTERVAL_MS = 15_000;
 
 export type ZincState = {
+  account: PublicKey | null;
   snapshot: ZincSnapshot | null;
   session: AutoMinerSession | null;
   profile: PlayerProfile | null;
@@ -80,6 +81,7 @@ export function useZincState(account: PublicKey | null): ZincState {
   }, [refresh, account]);
 
   return {
+    account,
     snapshot,
     session,
     profile,

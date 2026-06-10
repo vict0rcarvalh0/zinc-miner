@@ -81,7 +81,7 @@ export function StatPill({
             {value}
           </Text>
           {unit === 'sol' ? <SolanaIcon size={13} /> : null}
-          {unit === 'zinc' ? <ZincIcon size={14} color={accent ?? colors.text} /> : null}
+          {unit === 'zinc' ? <ZincIcon size={14} /> : null}
         </View>
       </View>
     </Animated.View>

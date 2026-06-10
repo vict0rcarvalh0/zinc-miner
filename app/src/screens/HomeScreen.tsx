@@ -185,7 +185,7 @@ export function HomeScreen({ state }: { state: ZincState }) {
           <SectionTitle>ZINC Bonanza</SectionTitle>
           <View style={styles.potRow}>
             <Text style={styles.potValue}>{formatZinc(bonanzaPot)}</Text>
-            <ZincIcon size={24} color={colors.gold} />
+            <ZincIcon size={24} />
           </View>
           <Text style={styles.potCap}>UNDISTRIBUTED JACKPOT</Text>
         </Card>

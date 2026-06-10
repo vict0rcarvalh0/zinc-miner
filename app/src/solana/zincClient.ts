@@ -15,6 +15,8 @@ import {
   buildUpdateAutoMinerSessionInstruction,
   buildTopUpAutoMinerSessionInstruction,
   buildCancelAutoMinerSessionInstruction,
+  buildClaimPlayerSolRewardsInstruction,
+  buildClaimPlayerZincRewardsInstruction,
   unwrapOption,
 } from '@sphalerite-foundry/zinc-ts-sdk/codama-ts-custom';
 import type {
@@ -24,7 +26,7 @@ import type {
   AutoMinerSession,
   PlayerProfile,
 } from '@sphalerite-foundry/zinc-ts-sdk/codama-ts';
-import { sealTilePattern } from './mask';
+import { sealTilePattern, validateSealedPattern, type SealedPattern } from './mask';
 import { ZINC_EXECUTOR } from '../config/zinc';
 
 export { ZINC_PROGRAM_ID } from '@sphalerite-foundry/zinc-ts-sdk/codama-ts-custom';
@@ -125,17 +127,26 @@ export type AutoMinerParams = {
   crankReimbursementLamports: bigint;
 };
 
+/** Seals the pattern and aborts if Zinc's crank can't decrypt it (before funds). */
+async function sealAndValidate(selectedTiles: number[]): Promise<SealedPattern> {
+  const sealed = sealTilePattern(selectedTiles);
+  const check = await validateSealedPattern(sealed);
+  if (check.reachable && !check.valid) {
+    throw new Error(
+      "Zinc rejected the sealed tile pattern — the crank can't decrypt it " +
+        '(the auto-miner key may have rotated). Aborted before committing funds.',
+    );
+  }
+  return sealed;
+}
+
 /** Builds the instruction that creates a new auto-miner session. */
 export async function buildStartSessionIx(
   connection: Connection,
   signer: PublicKey,
   params: AutoMinerParams,
 ): Promise<TransactionInstruction> {
-  const sealed = await sealTilePattern(
-    connection,
-    ZINC_PROGRAM_ID,
-    params.selectedTiles,
-  );
+  const sealed = await sealAndValidate(params.selectedTiles);
   return buildInitAutoMinerSessionInstruction({
     signer,
     executor: ZINC_EXECUTOR,
@@ -157,11 +168,7 @@ export async function buildUpdateSessionIx(
   signer: PublicKey,
   params: Omit<AutoMinerParams, 'initialBudget'> & { paused: boolean },
 ): Promise<TransactionInstruction> {
-  const sealed = await sealTilePattern(
-    connection,
-    ZINC_PROGRAM_ID,
-    params.selectedTiles,
-  );
+  const sealed = await sealAndValidate(params.selectedTiles);
   return buildUpdateAutoMinerSessionInstruction({
     signer,
     executor: ZINC_EXECUTOR,
@@ -190,4 +197,19 @@ export function buildCancelIx(
   signer: PublicKey,
 ): Promise<TransactionInstruction> {
   return buildCancelAutoMinerSessionInstruction({ signer });
+}
+
+/** Sweeps the player's claimable round SOL rewards to their wallet. */
+export function buildClaimSolIx(
+  signer: PublicKey,
+): Promise<TransactionInstruction> {
+  return buildClaimPlayerSolRewardsInstruction({ signer });
+}
+
+/** Claims the player's credited round ZINC rewards. */
+export function buildClaimZincIx(
+  connection: Connection,
+  signer: PublicKey,
+): Promise<TransactionInstruction> {
+  return buildClaimPlayerZincRewardsInstruction({ connection, signer });
 }

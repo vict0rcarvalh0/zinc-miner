@@ -51,18 +51,30 @@ export const LAMPORTS_PER_SOL = 1_000_000_000;
  * `CRANK_X25519_PUBKEY = null` makes mask.ts fall back to the on-chain Arcium
  * MXE x25519 key, which is the same key the crank re-encrypts deploys to.
  */
+// Zinc's live crank/executor wallet — the value every on-chain AutoMinerSession
+// is registered to (confirmed across 506 live mainnet sessions, 2026-06-09).
 export const ZINC_EXECUTOR = new PublicKey(
-  // TODO: replace with Zinc's published crank/executor wallet address.
-  '11111111111111111111111111111111',
+  'Chi3JgCnApLepS9zcVkLdD1kUpvyZAJqNaf1EqLB8vm7',
 );
 
-// Base58 x25519 public key the auto-miner pattern is encrypted to, or null to
-// derive it from the on-chain MXE account at runtime.
-export const CRANK_X25519_PUBKEY: string | null = null;
+// Base64 x25519 public key the auto-miner tile mask is sealed to: the crank's
+// dedicated auto-miner key (NOT the Arcium MXE key). Published at
+// https://zinc.cash/api/app-config → `auto_miner_mask_bits_encryption_public_key`.
+// Server-verified via POST /api/auto-miner/validate-pattern → {"valid":true}.
+export const CRANK_X25519_PUBKEY = 'mvWnfjGGF444Am2nC5hNCgrJjg4eP7gg/PUdd3OAx3w=';
 
 // Crank encryption-key version stored beside the sealed pattern. Must match the
-// crank's current key generation.
-export const CRANK_KEY_VERSION = 0;
+// crank's current key generation (app-config: auto_miner_mask_bits_key_version).
+export const CRANK_KEY_VERSION = 1;
+
+// Zinc's read API base (round/player history, claimables). Public, no auth.
+export const ZINC_API_BASE = 'https://zinc.cash/api';
+
+// Zinc endpoint that confirms a sealed tile pattern is decryptable by the crank.
+// Used as a pre-flight before committing a session's budget on-chain, so a
+// mis-sealed pattern (e.g. if the crank key rotates) is caught before spending.
+export const ZINC_VALIDATE_PATTERN_URL =
+  'https://zinc.cash/api/auto-miner/validate-pattern';
 
 // Fixed lamport reimbursement paid to the crank after each successful deploy.
 export const DEFAULT_CRANK_REIMBURSEMENT_LAMPORTS = 25_000;

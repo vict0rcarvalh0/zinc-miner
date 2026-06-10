@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { TransactionInstruction } from '@solana/web3.js';
 import { getConnection } from '../solana/connection';
 import { useMobileWallet } from '../wallet/useMobileWallet';
 import {
@@ -6,6 +7,8 @@ import {
   buildUpdateSessionIx,
   buildTopUpIx,
   buildCancelIx,
+  buildClaimSolIx,
+  buildClaimZincIx,
   type AutoMinerParams,
 } from '../solana/zincClient';
 
@@ -75,5 +78,37 @@ export function useAutoMiner(onChanged?: () => void) {
     [run, sendInstructions],
   );
 
-  return { start, update, topUp, cancel, busy, lastError };
+  const claimSol = useCallback(
+    () =>
+      run(() =>
+        sendInstructions((payer) => buildClaimSolIx(payer).then((ix) => [ix])),
+      ),
+    [run, sendInstructions],
+  );
+
+  const claimZinc = useCallback(
+    () =>
+      run(() =>
+        sendInstructions((payer) =>
+          buildClaimZincIx(getConnection(), payer).then((ix) => [ix]),
+        ),
+      ),
+    [run, sendInstructions],
+  );
+
+  // Claim SOL and/or smelt ZINC in a single transaction.
+  const claimAll = useCallback(
+    (opts: { sol: boolean; zinc: boolean }) =>
+      run(() =>
+        sendInstructions(async (payer) => {
+          const ixs: TransactionInstruction[] = [];
+          if (opts.sol) ixs.push(await buildClaimSolIx(payer));
+          if (opts.zinc) ixs.push(await buildClaimZincIx(getConnection(), payer));
+          return ixs;
+        }),
+      ),
+    [run, sendInstructions],
+  );
+
+  return { start, update, topUp, cancel, claimSol, claimZinc, claimAll, busy, lastError };
 }

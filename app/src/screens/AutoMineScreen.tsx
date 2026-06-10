@@ -37,6 +37,11 @@ const EVEN_TILES = ALL_TILES.filter((t) => tileToNumber(t) % 2 === 0);
 const ODD_TILES = ALL_TILES.filter((t) => tileToNumber(t) % 2 === 1);
 const RISK_PCTS = [25, 50, 75, 100];
 
+// The tile mask is now sealed to the crank's auto-miner x25519 key and accepted
+// by Zinc's /api/auto-miner/validate-pattern (server decrypts OK), so the crank
+// can deploy. Flip to false again if sealing ever regresses.
+const AUTO_DEPLOY_LIVE = true;
+
 const solStr = (lamports: number | bigint) => lamportsToSol(Math.round(Number(lamports)));
 
 export function AutoMineScreen({
@@ -248,7 +253,7 @@ export function AutoMineScreen({
         <NumberStepper value={amountSol} onChange={setAmountSol} step={0.01} min={minAmountSol} unit="sol" precision={3} />
         <View style={{ height: spacing.md }} />
         <Label>Rounds</Label>
-        <NumberStepper value={rounds} onChange={(n) => setRounds(Math.round(n))} step={5} min={1} precision={0} />
+        <NumberStepper value={rounds} onChange={(n) => setRounds(Math.round(n))} step={1} min={1} precision={0} />
         <View style={{ height: spacing.md }} />
         <Toggle
           label="Auto-reload from rewards"
@@ -323,6 +328,18 @@ export function AutoMineScreen({
           <StatPill label="Crank fee / round" value={lamportsToSol(reimbursement)} unit="sol" />
         </View>
       </Card>
+
+      {!AUTO_DEPLOY_LIVE ? (
+        <View style={styles.guard}>
+          <Text style={styles.guardTitle}>⚠ AUTO-DEPLOYS NOT LIVE YET</Text>
+          <Text style={styles.guardBody}>
+            The tile pattern is currently sealed with the wrong scheme, so Zinc's
+            zk-mask-server can't read it and the crank won't mine this session.
+            Starting will commit your budget on-chain (you'll have to Cancel &
+            Refund it). Wiring the real mask sealing is in progress.
+          </Text>
+        </View>
+      ) : null}
 
       {validation ? <Text style={styles.warn}>{validation}</Text> : null}
       {lastError ? <Text style={styles.error}>{lastError}</Text> : null}
@@ -468,4 +485,20 @@ const styles = StyleSheet.create({
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   warn: { color: colors.warn, fontSize: 13, marginBottom: spacing.md, textAlign: 'center' },
   error: { color: colors.loss, fontSize: 13, marginBottom: spacing.md },
+  guard: {
+    backgroundColor: 'rgba(248,81,73,0.10)',
+    borderColor: colors.loss,
+    borderWidth: 1,
+    borderRadius: radius.hud,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  guardTitle: {
+    color: colors.loss,
+    fontFamily: font.black,
+    fontSize: 12,
+    letterSpacing: 1,
+    marginBottom: spacing.xs,
+  },
+  guardBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
 });

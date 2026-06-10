@@ -7,7 +7,7 @@ import { colors } from '../../theme';
  * (logo/ZincLogo.svg). Monochrome — defaults to off-white; pass `color` to tint
  * it (e.g. to match a value's accent color, or the orange brand accent).
  */
-export function ZincIcon({ size = 14, color = colors.textMuted }: { size?: number; color?: string }) {
+export function ZincIcon({ size = 14, color = colors.text }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 304 304">
       <Path
