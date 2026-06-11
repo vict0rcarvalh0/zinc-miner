@@ -14,7 +14,8 @@ import { ZincIcon } from '../components/icons/ZincIcon';
 import { lamportsToSol, solToLamports, formatZinc } from '../lib/format';
 import { useAutoMiner } from '../hooks/useAutoMiner';
 import { usePlayerHistory } from '../hooks/usePlayerHistory';
-import { opt } from '../solana/zincClient';
+import { opt, claimFeeLamports, claimFeeZinc } from '../solana/zincClient';
+import { CLAIM_FEE_BPS, CLAIM_FEE_WALLET } from '../config/zinc';
 import type { PlayerRound } from '../lib/playerHistory';
 import type { ZincState } from '../hooks/useZincState';
 
@@ -39,6 +40,10 @@ export function SessionScreen({ state }: { state: ZincState }) {
   const unsmeltedZinc = profile ? BigInt(profile.claimableRoundZincRewards ?? 0n) : 0n;
   const smeltedZinc = profile ? BigInt(profile.refinedRoundZincRewards ?? 0n) : 0n;
 
+  const feeEnabled = CLAIM_FEE_WALLET != null && CLAIM_FEE_BPS > 0;
+  const feeSolOnClaim = claimFeeLamports(claimableSol);
+  const feeZincOnClaim = claimFeeZinc(unsmeltedZinc);
+
   const onCancel = () =>
     Alert.alert(
       'Cancel auto-miner?',
@@ -61,7 +66,7 @@ export function SessionScreen({ state }: { state: ZincState }) {
     if (sig) Alert.alert('Budget topped up', `Confirmed.\n\n${sig}`);
   };
   const onClaimSol = async () => {
-    const sig = await claimSol();
+    const sig = await claimSol(claimableSol);
     if (sig) {
       Alert.alert('SOL claimed', `Confirmed.\n\n${sig}`);
       refresh();
@@ -69,7 +74,12 @@ export function SessionScreen({ state }: { state: ZincState }) {
     }
   };
   const onClaimAll = async () => {
-    const sig = await claimAll({ sol: claimableSol > 0n, zinc: unsmeltedZinc > 0n });
+    const sig = await claimAll({
+      sol: claimableSol > 0n,
+      zinc: unsmeltedZinc > 0n,
+      claimableSolLamports: claimableSol,
+      claimableZinc: unsmeltedZinc,
+    });
     if (sig) {
       Alert.alert('Rewards claimed', `Confirmed.\n\n${sig}`);
       refresh();
@@ -119,6 +129,15 @@ export function SessionScreen({ state }: { state: ZincState }) {
           (a 10% fee refines into Smelted ZINC for holders). Smelted ZINC is yours
           from others' smelting fees.
         </Text>
+        {feeEnabled ? (
+          <Text style={styles.feeNote}>
+            App fee: {CLAIM_FEE_BPS / 100}% on SOL + ZINC claims
+            {feeSolOnClaim > 0n || feeZincOnClaim > 0n
+              ? ` · ~${lamportsToSol(feeSolOnClaim)} SOL + ${formatZinc(feeZincOnClaim, 6)} ZINC on this claim`
+              : ''}
+            .
+          </Text>
+        ) : null}
         <View style={{ height: spacing.md }} />
         <View style={styles.claimRow}>
           <View style={styles.claimBtn}>
@@ -273,6 +292,7 @@ function ResultRow({ r }: { r: PlayerRound }) {
 const styles = StyleSheet.create({
   empty: { color: colors.textFaint, fontSize: 14, lineHeight: 20 },
   note: { color: colors.textFaint, fontSize: 12, lineHeight: 18, marginTop: spacing.md },
+  feeNote: { color: colors.accent, fontSize: 12, fontFamily: font.semibold, marginTop: spacing.sm },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   claimRow: { flexDirection: 'row', gap: spacing.sm },
   claimBtn: { flex: 1 },

@@ -70,6 +70,20 @@ export const CRANK_KEY_VERSION = 1;
 // Zinc's read API base (round/player history, claimables). Public, no auth.
 export const ZINC_API_BASE = 'https://zinc.cash/api';
 
+// Optional app fee on SOL reward claims, in basis points (100 = 1%, 250 = 2.5%).
+// The fee is transferred from the just-claimed SOL to CLAIM_FEE_WALLET inside the
+// SAME transaction, so it is visible in the wallet's approval sheet. Keep it
+// disclosed in the UI (the Session screen shows it). Set 0 to disable.
+export const CLAIM_FEE_BPS = 100;
+
+// Your wallet (base58) that receives the claim fee. Leave null to disable fees
+// entirely (no fee instruction is added).
+export const CLAIM_FEE_WALLET: string | null =
+  'ENhZGxdhuFbKnwnECdvxaUeJqtxLm7keqiwgkaTNuRUF';
+
+// The ZINC SPL mint (classic Token program), used to take the ZINC claim fee.
+export const ZINC_MINT = 'zinc155BS4mSPk8GXQj4R5hkVDQXcW253pTYq5SGyfi';
+
 // Zinc endpoint that confirms a sealed tile pattern is decryptable by the crank.
 // Used as a pre-flight before committing a session's budget on-chain, so a
 // mis-sealed pattern (e.g. if the crank key rotates) is caught before spending.

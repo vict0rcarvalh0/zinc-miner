@@ -1,4 +1,9 @@
-import { Connection, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import {
+  Connection,
+  PublicKey,
+  SystemProgram,
+  TransactionInstruction,
+} from '@solana/web3.js';
 import {
   ZINC_PROGRAM_ID,
   fetchBoardAccount,
@@ -27,7 +32,17 @@ import type {
   PlayerProfile,
 } from '@sphalerite-foundry/zinc-ts-sdk/codama-ts';
 import { sealTilePattern, validateSealedPattern, type SealedPattern } from './mask';
-import { ZINC_EXECUTOR } from '../config/zinc';
+import {
+  getAssociatedTokenAddressSync,
+  createTransferInstruction,
+  createAssociatedTokenAccountIdempotentInstruction,
+} from '@solana/spl-token';
+import {
+  ZINC_EXECUTOR,
+  CLAIM_FEE_BPS,
+  CLAIM_FEE_WALLET,
+  ZINC_MINT,
+} from '../config/zinc';
 
 export { ZINC_PROGRAM_ID } from '@sphalerite-foundry/zinc-ts-sdk/codama-ts-custom';
 
@@ -212,4 +227,52 @@ export function buildClaimZincIx(
   signer: PublicKey,
 ): Promise<TransactionInstruction> {
   return buildClaimPlayerZincRewardsInstruction({ connection, signer });
+}
+
+/** The app fee (lamports) taken on a SOL claim of `claimedLamports`. */
+export function claimFeeLamports(claimedLamports: bigint): bigint {
+  if (!CLAIM_FEE_WALLET || CLAIM_FEE_BPS <= 0 || claimedLamports <= 0n) return 0n;
+  return (claimedLamports * BigInt(Math.round(CLAIM_FEE_BPS))) / 10000n;
+}
+
+/** A transfer of the app SOL claim fee to CLAIM_FEE_WALLET, or null when disabled. */
+export function buildClaimFeeIx(
+  payer: PublicKey,
+  claimedLamports: bigint,
+): TransactionInstruction | null {
+  const fee = claimFeeLamports(claimedLamports);
+  if (fee <= 0n || !CLAIM_FEE_WALLET) return null;
+  return SystemProgram.transfer({
+    fromPubkey: payer,
+    toPubkey: new PublicKey(CLAIM_FEE_WALLET),
+    lamports: fee,
+  });
+}
+
+/** The app fee (raw ZINC base units) taken on a ZINC claim of `claimedZinc`. */
+export function claimFeeZinc(claimedZinc: bigint): bigint {
+  if (!CLAIM_FEE_WALLET || CLAIM_FEE_BPS <= 0 || claimedZinc <= 0n) return 0n;
+  return (claimedZinc * BigInt(Math.round(CLAIM_FEE_BPS))) / 10000n;
+}
+
+/**
+ * SPL-token instructions that move the ZINC claim fee to CLAIM_FEE_WALLET.
+ * Ensures the fee wallet's ZINC ATA exists (idempotent) then transfers the fee
+ * from the player's ATA. Empty when fees are disabled. Must run AFTER the smelt
+ * so the player's ATA holds the claimed ZINC.
+ */
+export function buildClaimZincFeeIxs(
+  payer: PublicKey,
+  claimedZinc: bigint,
+): TransactionInstruction[] {
+  const fee = claimFeeZinc(claimedZinc);
+  if (fee <= 0n || !CLAIM_FEE_WALLET) return [];
+  const feeWallet = new PublicKey(CLAIM_FEE_WALLET);
+  const mint = new PublicKey(ZINC_MINT);
+  const playerAta = getAssociatedTokenAddressSync(mint, payer);
+  const feeAta = getAssociatedTokenAddressSync(mint, feeWallet);
+  return [
+    createAssociatedTokenAccountIdempotentInstruction(payer, feeAta, feeWallet, mint),
+    createTransferInstruction(playerAta, feeAta, payer, fee),
+  ];
 }

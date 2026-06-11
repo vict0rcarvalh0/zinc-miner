@@ -9,6 +9,8 @@ import {
   buildCancelIx,
   buildClaimSolIx,
   buildClaimZincIx,
+  buildClaimFeeIx,
+  buildClaimZincFeeIxs,
   type AutoMinerParams,
 } from '../solana/zincClient';
 
@@ -79,9 +81,14 @@ export function useAutoMiner(onChanged?: () => void) {
   );
 
   const claimSol = useCallback(
-    () =>
+    (claimableSolLamports: bigint) =>
       run(() =>
-        sendInstructions((payer) => buildClaimSolIx(payer).then((ix) => [ix])),
+        sendInstructions(async (payer) => {
+          const ixs: TransactionInstruction[] = [await buildClaimSolIx(payer)];
+          const fee = buildClaimFeeIx(payer, claimableSolLamports);
+          if (fee) ixs.push(fee);
+          return ixs;
+        }),
       ),
     [run, sendInstructions],
   );
@@ -96,14 +103,27 @@ export function useAutoMiner(onChanged?: () => void) {
     [run, sendInstructions],
   );
 
-  // Claim SOL and/or smelt ZINC in a single transaction.
+  // Claim SOL and/or smelt ZINC in a single transaction (+ app fee on SOL).
   const claimAll = useCallback(
-    (opts: { sol: boolean; zinc: boolean }) =>
+    (opts: {
+      sol: boolean;
+      zinc: boolean;
+      claimableSolLamports: bigint;
+      claimableZinc: bigint;
+    }) =>
       run(() =>
         sendInstructions(async (payer) => {
           const ixs: TransactionInstruction[] = [];
+          // Claims first so the wallet/ATA holds the rewards before the fees move.
           if (opts.sol) ixs.push(await buildClaimSolIx(payer));
           if (opts.zinc) ixs.push(await buildClaimZincIx(getConnection(), payer));
+          if (opts.sol) {
+            const fee = buildClaimFeeIx(payer, opts.claimableSolLamports);
+            if (fee) ixs.push(fee);
+          }
+          if (opts.zinc) {
+            ixs.push(...buildClaimZincFeeIxs(payer, opts.claimableZinc));
+          }
           return ixs;
         }),
       ),

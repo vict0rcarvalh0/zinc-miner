@@ -18,6 +18,7 @@
     "@react-native-async-storage/async-storage": "1.23.1",
     "@solana-mobile/mobile-wallet-adapter-protocol": "^2.1.5",
     "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "^2.1.5",
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
     "@sphalerite-foundry/zinc-ts-sdk": "file:../zinc-ts-sdk",
     "bn.js": "^5.2.3",
